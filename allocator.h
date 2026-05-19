@@ -25,6 +25,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define PAGE_SIZE 4096
+
 typedef uint8_t  u8;   
 typedef uint16_t u16;  
 typedef uint32_t u32; 
@@ -36,7 +38,7 @@ typedef int32_t  i32;
 typedef int64_t  i64;
 
 typedef struct free_area{ 
-    u8 marker;
+    int marker;
     struct free_area *prev;
     bool InUse;
     u32 length;
@@ -50,7 +52,7 @@ typedef struct free_area{
 */ 
 
 typedef struct stast{
-    int magical_byte;
+    u64 magical_bytes;
     bool my_simple_lock;
     u32 amount_of_blocks;
     u32 amount_of_pages;
