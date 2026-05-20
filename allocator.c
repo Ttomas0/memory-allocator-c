@@ -299,13 +299,60 @@ void test_bigger_than_available_malloc() {
   assert(*((uint8_t *)ptr + 4998) == (2499 & 0xFF));
 }
 
+void test_basic_malloc() {
+    int *ptr = (int *)an_malloc(sizeof(int));
+    assert(ptr != NULL);
+    *ptr = 42;
+    assert(*ptr == 42);
+    an_free(ptr);
+}
 
+void test_free() {
+    int *ptr = (int *)an_malloc(sizeof(int));
+    assert(ptr != NULL);
+    *ptr = 99;
+    assert(*ptr == 99);
+    bool result = an_free(ptr);
+    assert(result == true);
+    area *block = (area *)((char *)ptr - sizeof(area));
+    assert(block->InUse == false);
+}
+
+void complex_set_of_malloc_and_free_calls() {
+    int *a = (int *)an_malloc(sizeof(int));
+    int *b = (int *)an_malloc(sizeof(int) * 10);
+    int *c = (int *)an_malloc(sizeof(int) * 100);
+    assert(a != NULL);
+    assert(b != NULL);
+    assert(c != NULL);
+
+    *a = 1;
+    for (int i = 0; i < 10; i++) *(b + i) = i;
+    for (int i = 0; i < 100; i++) *(c + i) = i;
+
+    assert(*a == 1);
+    assert(*(b + 9) == 9);
+    assert(*(c + 99) == 99);
+
+    an_free(b);
+    an_free(a);
+    an_free(c);
+
+    int *d = (int *)an_malloc(sizeof(int));
+    assert(d != NULL);
+    *d = 77;
+    assert(*d == 77);
+    an_free(d);
+}
 
 
 int main() {
-
-  call_test(test_bigger_than_available_malloc, "Request more memory Malloc");
-  printf("DONE");
+    call_test(test_basic_malloc, "Basic Malloc");
+    call_test(test_bigger_than_available_malloc, "Request more memory Malloc");
+    call_test(test_free, "Basic Free");
+    call_test(complex_set_of_malloc_and_free_calls, "Complex");
+    printf("DONE\n");
+    return 0;
 }
 
 /**
