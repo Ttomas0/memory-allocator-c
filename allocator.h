@@ -52,7 +52,7 @@ typedef struct free_area{
 */ 
 
 typedef struct stast{
-    u64 magical_bytes;
+    int magical_bytes;
     bool my_simple_lock;
     u32 amount_of_blocks;
     u32 amount_of_pages;
@@ -65,7 +65,7 @@ typedef struct stast{
  * 
 */ 
 
-char *heap_start = NULL;
-char *heap_end = NULL;
+void *heap_start = NULL;
+void *heap_end = NULL;
 
 #endif

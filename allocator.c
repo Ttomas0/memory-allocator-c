@@ -3,6 +3,10 @@
 #include <unistd.h>
 #include <assert.h>
 #include <string.h>
+#include <unistd.h>    
+#include <sys/wait.h>   
+#include <stdio.h>      
+#include <stdlib.h>     
 
 #include "allocator.h"
 
@@ -65,7 +69,9 @@ area *find_last_block(){
         last_block = block;
         block = block->next;
 
-         // no big enough blocks.
+    }
+
+     // no big enough blocks.
         if(smallest_block == NULL){
             area *last_block = find_last_block();
             while(last_block->length < size){
@@ -75,7 +81,7 @@ area *find_last_block(){
             }
             smallest_block = last_block;
         }
-    }
+
     smallest_block->InUse = true;
     int must_have_size = smallest_block->length - size - sizeof(area) - 1; //sizeof(area) its the header of the new block just created the -1 guarantee that the new block have at least 1 byte
 
@@ -87,7 +93,7 @@ area *find_last_block(){
     }
     int remaining_sizes = must_have_size + 1;
     malloc_header->amount_of_blocks += 1; //we are gonna create a new block for the remaining_size
-    area *new_block = (area *)((char *)last_block + sizeof(area) + size); //the direction of the new block
+    area *new_block = (area *)((char *)smallest_block + sizeof(area) + size); //the direction of the new block
     new_block->marker = BLOCK_MARKER;
     new_block->InUse = false;
     new_block->length = remaining_sizes;
@@ -128,10 +134,10 @@ int *an_malloc(ssize_t size){
 
     // First, we check if the magical bytes are at the beggining of the heap
 
-    if (heap_start != MAGICAL_BYTES){
+    if (*(char *)heap_start != MAGICAL_BYTES){
     // first execution of malloc
     
-    heap_start = MAGICAL_BYTES;
+    *(char *)heap_start = MAGICAL_BYTES;
     my_stats *malloc_header = (my_stats *)heap_start;
     malloc_header->amount_of_blocks = 1;
     malloc_header->amount_of_pages = 1;
@@ -214,7 +220,7 @@ bool an_free(void *ptr){
     area *block = ptr - sizeof(area); //each block have a header the objetive with this is to find where it starts (it goes from back to front)
 
     if(block->marker != BLOCK_MARKER){
-        return marker_state = false;
+        marker_state = false;
     }else{
         block->InUse = false;
         memset(ptr, 0, block->length); //this put all the bytes in 0s so basically it delete all the information
@@ -235,7 +241,7 @@ bool an_free(void *ptr){
                 
                 malloc_header->amount_of_blocks -= 1;
 
-
+             
             }
 
             if(block->prev != NULL && (block->prev)->InUse == false){
@@ -251,27 +257,65 @@ bool an_free(void *ptr){
             malloc_header->amount_of_blocks -= 1;
         }
         reduce_heap_size_if_possible();
+        marker_state = true;
     }
     malloc_header->my_simple_lock = false;
-    marker_state = true;
     return marker_state;
 
 }
 
 
 
+//testing -------------------
 
-
-
-
-
-
-
-
-int main(){
-    
-    
-    printf("hola");
-    
-    return 0;
+void call_test(void (*test_func)(), const char *msg) {
+  pid_t pid = fork();
+  if (pid == 0) {
+    test_func();
+    exit(0);
+  } else {
+    int status;
+    waitpid(pid, &status, 0);
+    if (WIFSIGNALED(status)) {
+      printf("%s crashed with signal %d\n", msg, WTERMSIG(status));
+    } else {
+      printf("%s passed\n", msg);
+    }
+  }
 }
+
+void test_bigger_than_available_malloc() {
+  uint16_t *ptr = (uint16_t *)an_malloc(5000);
+  area *first_block = (void *)ptr - sizeof(area);
+  for (uint16_t i = 0; i <= 2499; i = i + 1) {
+    *(ptr + i) = i;
+  }
+  assert(first_block->marker == BLOCK_MARKER);
+  assert(*ptr == 0);
+  assert(*(ptr + 2) == 2);
+  assert(*(ptr + 2499) == 2499);
+  // little endian valid only
+  assert(*((uint8_t *)ptr + 4999) == (2499 >> 8));
+  assert(*((uint8_t *)ptr + 4998) == (2499 & 0xFF));
+}
+
+
+
+
+int main() {
+
+  call_test(test_bigger_than_available_malloc, "Request more memory Malloc");
+  printf("DONE");
+}
+
+/**
+ * @brief Compilation note
+ * @details This allocator uses sbrk(), which is a POSIX extension and NOT part of the C99 standard.
+ * If compiled with -std=c99 alone, glibc will hide sbrk()'s declaration in <unistd.h>.
+ * Without that declaration, the compiler assumes sbrk() returns int (32 bits) instead of
+ * void * (64 bits), truncating the pointer and causing a segfault at runtime.
+ * 
+ * To compile correctly, use one of these options:
+ *   - gcc -Wall -Wextra -g allocator.c -o test                          (no strict standard)
+ *   - gcc -Wall -Wextra -g -D_DEFAULT_SOURCE -std=c99 allocator.c -o test  (strict + POSIX)
+ */
