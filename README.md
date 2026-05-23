@@ -86,8 +86,7 @@ DONE
 ## Based on
 
 - [Malloc is not magic](https://levelup.gitconnected.com/malloc-is-not-magic-implementing-my-own-memory-allocator-e0354e914402) — original article this implementation follows
-- [Untangling lifetimes: the arena allocator — Ryan Fleury](https://www.rfleury.com/p/untangling-lifetimes-the-arena-allocator) — conceptual inspiration for the companion arena allocator
-
+  
 ---
 
 ## Related
